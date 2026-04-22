@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WASM Knapsack Solver</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <input id="weights" type="text" placeholder="10,20,30" />
+      <input id="values" type="text" placeholder="60,100,120" />
+      <input id="capacity" type="number" min="0" placeholder="50" />
+      <button id="sendBtn" disabled>Send</button>
+      <div id="result">Loading WASM...</div>
+
+<script>
+  const btn = document.getElementById("sendBtn");
+  const result = document.getElementById("result");
+  function parseCsvInts(text) {
+  return text
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0)
+    .map((x) => Number.parseInt(x, 10));
+}
+  var Module = {
+    onRuntimeInitialized() {
+      btn.disabled = false;
+      result.textContent = "WASM ready";
+
+      btn.addEventListener("click", () => {
+        const W = parseCsvInts(document.getElementById("weights").value);
+        const V = parseCsvInts(document.getElementById("values").value);
+        const M = Number.parseInt(document.getElementById("capacity").value, 10);
+
+        if (!Number.isInteger(M) || M < 0) {
+          result.textContent = "Invalid capacity";
+          return;
+        }
+
+        if (W.length === 0 || V.length === 0 || W.length !== V.length) {
+          result.textContent = "Weights/values must have same non-zero length";
+          return;
+        }
+
+        if (W.some((x) => !Number.isInteger(x)) || V.some((x) => !Number.isInteger(x))) {
+          result.textContent = "All weights/values must be integers";
+          return;
+        }
+
+        const n = W.length;
+        const bytes = n * Int32Array.BYTES_PER_ELEMENT;
+        const wPtr = Module._malloc(bytes);
+        const vPtr = Module._malloc(bytes);
+
+        Module.HEAP32.set(W, wPtr >> 2);
+        Module.HEAP32.set(V, vPtr >> 2);
+
+        const out = Module.ccall(
+          "prepare_knapsack",
+          "number",
+          ["number", "number", "number", "number"],
+          [n, M, wPtr, vPtr]
+        );
+
+        Module._free(wPtr);
+        Module._free(vPtr);
+
+        result.textContent = `Returned: ${out}`;
+      });
+    }
+  };
+</script>
+<script src="main.js"></script>
+  </body>
+</html>
