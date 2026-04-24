@@ -1,0 +1,29 @@
+body {
+  font-family: Arial, sans-serif;
+  max-width: 700px;
+  margin: 40px auto;
+}
+
+label {
+  display: block;
+  margin-top: 14px;
+  font-weight: bold;
+}
+
+textarea,
+input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  box-sizing: border-box;
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 16px;
+}
+
+#resultado {
+  margin-top: 20px;
+  font-size: 18px;
+}
