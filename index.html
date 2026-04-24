@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Knapsack con WebAssembly</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>0/1 Knapsack en WASM</h1>
+
+  <label for="weights">Pesos (separados por coma)</label>
+  <textarea id="weights" rows="2">2,3,4,5</textarea>
+
+  <label for="values">Valores (separados por coma)</label>
+  <textarea id="values" rows="2">3,4,5,6</textarea>
+
+  <label for="capacity">Capacidad</label>
+  <input id="capacity" type="number" value="5">
+
+  <button id="btn" disabled>Calcular</button>
+
+  <div id="resultado">Cargando módulo WASM...</div>
+
+  <script>
+    var Module = {
+      onRuntimeInitialized: function () {
+        const knapsack = Module.cwrap('knapsack_csv', 'number', ['string', 'string', 'number']);
+
+        const btn = document.getElementById('btn');
+        const resultado = document.getElementById('resultado');
+
+        btn.disabled = false;
+        resultado.textContent = 'WASM listo.';
+
+        btn.addEventListener('click', function () {
+          const weights = document.getElementById('weights').value;
+          const values = document.getElementById('values').value;
+          const capacity = parseInt(document.getElementById('capacity').value, 10);
+
+          const res = knapsack(weights, values, capacity);
+
+          if (res === -1) {
+            resultado.textContent = 'Error: pesos y valores deben tener el mismo largo.';
+          } else if (res === -2) {
+            resultado.textContent = 'Error: la capacidad no puede ser negativa.';
+          } else {
+            resultado.textContent = 'Resultado: ' + res;
+          }
+        });
+      }
+    };
+  </script>
+
+  <script src="knapsack.js"></script>
+</body>
+</html>
