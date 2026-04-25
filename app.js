@@ -1,12 +1,12 @@
 const PRODUCTS = [
-  { id: 1, name: 'Leche', price: 3000, benefit: 6 },
-  { id: 2, name: 'Pan', price: 2000, benefit: 4 },
-  { id: 3, name: 'Huevos', price: 3500, benefit: 7 },
-  { id: 4, name: 'Arroz', price: 2500, benefit: 5 },
-  { id: 5, name: 'Pollo', price: 5000, benefit: 10 },
-  { id: 6, name: 'Fruta', price: 2000, benefit: 5 },
-  { id: 7, name: 'Fideos', price: 2200, benefit: 5 },
-  { id: 8, name: 'Atun', price: 3200, benefit: 6 }
+  { id: 1, name: 'Leche', price: 3000, benefit: 6, stock: 1 },
+  { id: 2, name: 'Pan', price: 2000, benefit: 4, stock: 1 },
+  { id: 3, name: 'Huevos', price: 3500, benefit: 7, stock: 1 },
+  { id: 4, name: 'Arroz', price: 2500, benefit: 5, stock: 1 },
+  { id: 5, name: 'Pollo', price: 5000, benefit: 10, stock: 1 },
+  { id: 6, name: 'Fruta', price: 2000, benefit: 5, stock: 1 },
+  { id: 7, name: 'Fideos', price: 2200, benefit: 5, stock: 1 },
+  { id: 8, name: 'Atun', price: 3200, benefit: 6, stock: 1 }
 ];
 
 let knapsack = null;
@@ -72,10 +72,46 @@ function pickOptionalProducts(items, capacity, cache) {
   return pickOptionalProducts(rest, capacity, cache);
 }
 
+function applyStockFromInputs() {
+  let updated = 0;
+  PRODUCTS.forEach(function (p) {
+    const input = document.querySelector(`input[data-stock-id="${p.id}"]`);
+    if (!input) return;
+    const qty = parseInt(input.value, 10);
+    const safeQty = Number.isNaN(qty) || qty < 0 ? 0 : qty;
+    p.stock = safeQty;
+    updated += 1;
+  });
+  return updated;
+}
+
+function updateStockStatus() {
+  const stockStatus = document.getElementById('stock-status');
+  const updated = applyStockFromInputs();
+  stockStatus.textContent = `Stock actualizado: ${updated} productos.`;
+}
+
+function expandByStock(items) {
+  const expanded = [];
+  items.forEach(function (item) {
+    const stock = Math.max(0, item.stock || 0);
+    for (let i = 0; i < stock; i += 1) {
+      expanded.push({
+        id: item.id + '-' + i,
+        productId: item.id,
+        name: item.name,
+        price: item.price,
+        benefit: item.benefit
+      });
+    }
+  });
+  return expanded;
+}
+
 function renderProducts() {
   const node = document.getElementById('products');
   node.innerHTML = PRODUCTS.map(function (p) {
-    return `<label class="product"><input type="checkbox" data-id="${p.id}"><span>${p.name} | Costo ${clp(p.price)} | Beneficio ${p.benefit}</span></label>`;
+    return `<label class="product"><input type="checkbox" data-id="${p.id}"><span>${p.name} | Costo ${clp(p.price)} | Beneficio ${p.benefit} | Stock ${p.stock}</span></label>`;
   }).join('');
 }
 
@@ -86,22 +122,27 @@ function getMandatoryProducts() {
   });
 }
 
+function countByName(items) {
+  const map = new Map();
+  items.forEach(function (item) {
+    const key = item.name;
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+  return Array.from(map.entries());
+}
+
 function calculatePlan(budget) {
   const mandatory = getMandatoryProducts();
   const mandatoryCost = sum(mandatory, 'price');
   const mandatoryBenefit = sum(mandatory, 'benefit');
 
-  if (mandatoryCost > budget) {
-    return { error: 'Los productos obligatorios superan el presupuesto.' };
-  }
-
   const mandatoryIds = new Set(mandatory.map(function (p) {
     return p.id;
   }));
 
-  const optional = PRODUCTS.filter(function (p) {
+  const optional = expandByStock(PRODUCTS.filter(function (p) {
     return !mandatoryIds.has(p.id);
-  });
+  }));
 
   const remaining = budget - mandatoryCost;
   const cache = new Map();
@@ -132,9 +173,12 @@ function renderResult(plan, budget) {
     ? `<ul>${plan.mandatory.map(function (p) { return `<li>${p.name} (${clp(p.price)} / ${p.benefit})</li>`; }).join('')}</ul>`
     : '<p>No elegiste productos obligatorios.</p>';
 
-  const optionalList = plan.optionalSelected.length
-    ? `<ul>${plan.optionalSelected.map(function (p) { return `<li>${p.name} (${clp(p.price)} / ${p.benefit})</li>`; }).join('')}</ul>`
-    : '<p>WASM no agrego productos opcionales.</p>';
+    const optionalCounts = countByName(plan.optionalSelected);
+    const optionalList = optionalCounts.length
+      ? `<ul>${optionalCounts.map(function ([name, qty]) {
+          return `<li>${name} x${qty}</li>`;
+        }).join('')}</ul>`
+      : '<p>WASM no agrego productos opcionales.</p>';
 
   const finalProducts = plan.mandatory.concat(plan.optionalSelected);
   const finalList = finalProducts.length
@@ -160,11 +204,12 @@ function renderResult(plan, budget) {
 var Module = {
   onRuntimeInitialized: function () {
     knapsack = Module.cwrap('knapsack_csv', 'number', ['string', 'string', 'number']);
-
+    const btnStock = document.getElementById('btn-stock');
     const btn = document.getElementById('btn');
     const status = document.getElementById('status');
     const resultNode = document.getElementById('result');
 
+    btnStock.addEventListener('click', updateStockStatus);
     renderProducts();
     btn.disabled = false;
     status.textContent = 'WASM listo.';
@@ -178,6 +223,7 @@ var Module = {
         return;
       }
 
+      applyStockFromInputs();
       const plan = calculatePlan(budget);
       if (plan.error) {
         status.textContent = 'Error: ' + plan.error;

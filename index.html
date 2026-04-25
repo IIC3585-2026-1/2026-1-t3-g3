@@ -13,6 +13,19 @@
 
     <label for="budget">Presupuesto maximo (CLP)</label>
     <input id="budget" type="number" min="0" step="100" value="15000">
+    <h2>Stock en mercado</h2>
+    <div id="stock-editor" class="stock-editor">
+      <label>Leche: <input type="number" min="0" value="1" data-stock-id="1"></label>
+      <label>Pan: <input type="number" min="0" value="1" data-stock-id="2"></label>
+      <label>Huevos: <input type="number" min="0" value="1" data-stock-id="3"></label>
+      <label>Arroz: <input type="number" min="0" value="1" data-stock-id="4"></label>
+      <label>Pollo: <input type="number" min="0" value="1" data-stock-id="5"></label>
+      <label>Fruta: <input type="number" min="0" value="1" data-stock-id="6"></label>
+      <label>Fideos: <input type="number" min="0" value="1" data-stock-id="7"></label>
+      <label>Atun: <input type="number" min="0" value="1" data-stock-id="8"></label>
+    </div>
+    <button id="btn-stock" type="button">Actualizar stock</button>
+    <div id="stock-status"></div>
 
     <h2>Productos de la tienda</h2>
     <div id="products" class="products"></div>
