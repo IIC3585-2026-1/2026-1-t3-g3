@@ -147,12 +147,38 @@
           <div id="result" class="result"></div>
         </div>
 
+        <div class="card">
+          <h2>Benchmark JS vs WASM</h2>
+          <p class="subtitle">CSV con columnas: nombre, precio, beneficio.</p>
+
+          <div class="form-group">
+            <label for="benchmark-file">Archivo CSV</label>
+            <input id="benchmark-file" type="file" accept=".csv,text/csv">
+          </div>
+
+          <div class="form-group">
+            <label for="benchmark-capacity">Capacidad / presupuesto</label>
+            <input id="benchmark-capacity" type="number" min="0" step="100" value="15000">
+          </div>
+
+          <button id="btn-benchmark" class="btn secondary" disabled>
+            Ejecutar benchmark
+          </button>
+
+          <div id="benchmark-status" class="status">
+            Cargando módulo WASM...
+          </div>
+
+          <div id="benchmark-result" class="result"></div>
+        </div>
+
       </section>
 
     </section>
 
   </main>
 
+  <script src="knapsack-js-version.js"></script>
   <script src="app.js"></script>
   <script src="knapsack.js"></script>
 </body>
