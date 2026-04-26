@@ -9,7 +9,29 @@ const PRODUCTS = [
   { id: 8, name: 'Atun', price: 3200, benefit: 6, stock: 1 }
 ];
 
+const images =[
+  { id: 1, name: 'Leche', image: 'images/leche.png' },
+  { id: 2, name: 'Pan', image: 'images/pan.png' },
+  { id: 3, name: 'Huevos', image: 'images/huevo.jpg' },
+  { id: 4, name: 'Arroz', image: 'images/arroz.jpg' },
+  { id: 5, name: 'Pollo', image: 'images/pollo.jpg' },
+  { id: 6, name: 'Fruta', image: 'images/fruta.jpeg' },
+  { id: 7, name: 'Fideos', image: 'images/fideos.jpg' },
+  { id: 8, name: 'Atun', image: 'images/atun.jpeg' },
+]
+
 let knapsack = null;
+
+document.addEventListener('click', function (e) {
+  const card = e.target.closest('.product-card');
+  if (!card) return;
+
+  const checkbox = card.querySelector('input[type="checkbox"]');
+  if (e.target !== checkbox) {
+    checkbox.checked = !checkbox.checked;
+    card.classList.toggle('selected', checkbox.checked);
+  }
+});
 
 function clp(n) {
   return '$' + n.toLocaleString('es-CL');
@@ -91,6 +113,25 @@ function updateStockStatus() {
   stockStatus.textContent = `Stock actualizado: ${updated} productos.`;
 }
 
+function applyBenefitsFromInputs() {
+  let updated = 0;
+  PRODUCTS.forEach(function (p) {
+    const input = document.querySelector(`input[data-benefit-id="${p.id}"]`);
+    if (!input) return;
+    const benefit = parseInt(input.value, 10);
+    const safeBenefit = Number.isNaN(benefit) || benefit < 0 ? 0 : benefit;
+    p.benefit = safeBenefit;
+    updated += 1;
+  });
+  return updated;
+}
+
+function updateBenefitStatus() {
+  const benefitStatus = document.getElementById('benefit-status');
+  const updated = applyBenefitsFromInputs();
+  benefitStatus.textContent = `Beneficios actualizados: ${updated} productos.`;
+}
+
 function expandByStock(items) {
   const expanded = [];
   items.forEach(function (item) {
@@ -110,8 +151,27 @@ function expandByStock(items) {
 
 function renderProducts() {
   const node = document.getElementById('products');
+
   node.innerHTML = PRODUCTS.map(function (p) {
-    return `<label class="product"><input type="checkbox" data-id="${p.id}"><span>${p.name} | Costo ${clp(p.price)} | Beneficio ${p.benefit} | Stock ${p.stock}</span></label>`;
+    const img = images.find(image => image.name === p.name)?.image || "img/default.png";
+
+    return `
+      <div class="product-card">
+
+        <img src="${img}" alt="${p.name}">
+
+        <div class="product-info">
+          <h3>${p.name}</h3>
+          <p class="price">${clp(p.price)}</p>
+        </div>
+
+        <label class="product-select">
+          <input type="checkbox" data-id="${p.id}">
+          <span>Obligatorio</span>
+        </label>
+
+      </div>
+    `;
   }).join('');
 }
 
@@ -169,35 +229,85 @@ function calculatePlan(budget) {
 
 function renderResult(plan, budget) {
   const node = document.getElementById('result');
-  const mandatoryList = plan.mandatory.length
-    ? `<ul>${plan.mandatory.map(function (p) { return `<li>${p.name} (${clp(p.price)} / ${p.benefit})</li>`; }).join('')}</ul>`
-    : '<p>No elegiste productos obligatorios.</p>';
 
-    const optionalCounts = countByName(plan.optionalSelected);
-    const optionalList = optionalCounts.length
-      ? `<ul>${optionalCounts.map(function ([name, qty]) {
-          return `<li>${name} x${qty}</li>`;
-        }).join('')}</ul>`
-      : '<p>WASM no agrego productos opcionales.</p>';
+  const mandatoryList = plan.mandatory.length
+    ? `<ul class="list">
+        ${plan.mandatory.map(p => `
+          <li>
+            <span>${p.name}</span>
+            <span class="meta">${clp(p.price)} · Beneficio: ${p.benefit}</span>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">No elegiste productos obligatorios.</p>';
+
+  const optionalCounts = countByName(plan.optionalSelected);
+  const optionalList = optionalCounts.length
+    ? `<ul class="list">
+        ${optionalCounts.map(([name, qty]) => `
+          <li>
+            <span>${name}</span>
+            <span class="meta">x${qty}</span>
+          </li>
+        `).join('')}
+      </ul>`
+    : '<p class="empty">WASM no agregó productos opcionales.</p>';
 
   const finalProducts = plan.mandatory.concat(plan.optionalSelected);
   const finalList = finalProducts.length
-    ? `<ul>${finalProducts.map(function (p) { return `<li>${p.name}</li>`; }).join('')}</ul>`
-    : '<p>No hay productos en la compra.</p>';
+    ? `<ul class="list">
+        ${finalProducts.map(p => `<li>${p.name}</li>`).join('')}
+      </ul>`
+    : '<p class="empty">No hay productos en la compra.</p>';
 
   node.innerHTML = `
-    <p><strong>Presupuesto:</strong> ${clp(budget)}</p>
-    <p><strong>Costo obligatorio:</strong> ${clp(plan.mandatoryCost)}</p>
-    <p><strong>Beneficio obligatorio:</strong> ${plan.mandatoryBenefit}</p>
-    <p><strong>Costo opcional elegido:</strong> ${clp(plan.optionalCost)} (de ${clp(plan.remaining)} disponibles)</p>
-    <p><strong>Beneficio maximo opcional (WASM):</strong> ${plan.optionalBest}</p>
-    <p><strong>Beneficio total:</strong> ${plan.totalBenefit}</p>
-    <h3>Obligatorios</h3>
-    ${mandatoryList}
-    <h3>Opcionales elegidos por WASM</h3>
-    ${optionalList}
-    <h3>Compra final</h3>
-    ${finalList}
+    <div class="result-grid">
+
+      <!-- METRICS -->
+      <div class="metrics">
+        <div class="metric">
+          <span>Presupuesto</span>
+          <strong>${clp(budget)}</strong>
+        </div>
+        <div class="metric">
+          <span>Costo obligatorio</span>
+          <strong>${clp(plan.mandatoryCost)}</strong>
+        </div>
+        <div class="metric">
+          <span>Beneficio obligatorio</span>
+          <strong>${plan.mandatoryBenefit}</strong>
+        </div>
+        <div class="metric">
+          <span>Costo opcional</span>
+          <strong>${clp(plan.optionalCost)}</strong>
+        </div>
+        <div class="metric">
+          <span>Beneficio opcional</span>
+          <strong>${plan.optionalBest}</strong>
+        </div>
+        <div class="metric highlight">
+          <span>Beneficio total</span>
+          <strong>${plan.totalBenefit}</strong>
+        </div>
+      </div>
+
+      <!-- SECTIONS -->
+      <div class="result-section">
+        <h3>Obligatorios</h3>
+        ${mandatoryList}
+      </div>
+
+      <div class="result-section">
+        <h3>Opcionales (WASM)</h3>
+        ${optionalList}
+      </div>
+
+      <div class="result-section">
+        <h3>Compra final</h3>
+        ${finalList}
+      </div>
+
+    </div>
   `;
 }
 
@@ -205,11 +315,13 @@ var Module = {
   onRuntimeInitialized: function () {
     knapsack = Module.cwrap('knapsack_csv', 'number', ['string', 'string', 'number']);
     const btnStock = document.getElementById('btn-stock');
+    const btnBenefit = document.getElementById('btn-benefit');
     const btn = document.getElementById('btn');
     const status = document.getElementById('status');
     const resultNode = document.getElementById('result');
 
     btnStock.addEventListener('click', updateStockStatus);
+    btnBenefit.addEventListener('click', updateBenefitStatus);
     renderProducts();
     btn.disabled = false;
     status.textContent = 'WASM listo.';
@@ -224,6 +336,7 @@ var Module = {
       }
 
       applyStockFromInputs();
+      applyBenefitsFromInputs();
       const plan = calculatePlan(budget);
       if (plan.error) {
         status.textContent = 'Error: ' + plan.error;
