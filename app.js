@@ -49,6 +49,111 @@ function toCsv(items, key) {
   }).join(',');
 }
 
+function parseBenchmarkCsv(csvText) {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map(function (line) { return line.trim(); })
+    .filter(function (line) { return line.length > 0; });
+
+  if (lines.length < 2) {
+    throw new Error('El CSV debe tener encabezado y al menos una fila de datos.');
+  }
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i += 1) {
+    const cols = lines[i].split(',').map(function (c) { return c.trim(); });
+
+    if (cols.length < 3) {
+      throw new Error(`Fila invalida en linea ${i + 1}.`);
+    }
+
+    const name = cols[0] || '';
+    const price = parseInt(cols[1], 10);
+    const benefit = parseInt(cols[2], 10);
+
+    if (!name || Number.isNaN(price) || Number.isNaN(benefit) || price < 0 || benefit < 0) {
+      throw new Error(`Fila invalida en linea ${i + 1}.`);
+    }
+
+    rows.push({ name: name, price: price, benefit: benefit });
+  }
+
+  return rows;
+}
+
+function renderBenchmarkResult(metrics) {
+  const node = document.getElementById('benchmark-result');
+  const ratio = metrics.wasmTimeMs === 0
+    ? 'Infinito'
+    : (metrics.jsTimeMs / metrics.wasmTimeMs).toFixed(2) + 'x';
+  const sameValue = metrics.jsValue === metrics.wasmValue;
+
+  node.innerHTML = `
+    <div class="result-grid">
+      <div class="metrics">
+        <div class="metric">
+          <span>Tiempo JS</span>
+          <strong>${metrics.jsTimeMs.toFixed(3)} ms</strong>
+        </div>
+        <div class="metric">
+          <span>Tiempo WASM</span>
+          <strong>${metrics.wasmTimeMs.toFixed(3)} ms</strong>
+        </div>
+        <div class="metric">
+          <span>Resultado JS</span>
+          <strong>${metrics.jsValue}</strong>
+        </div>
+        <div class="metric">
+          <span>Resultado WASM</span>
+          <strong>${metrics.wasmValue}</strong>
+        </div>
+        <div class="metric highlight">
+          <span>Ratio JS / WASM</span>
+          <strong>${ratio}</strong>
+        </div>
+      </div>
+
+      <div class="result-section">
+        <h3>Comparacion</h3>
+        <p class="${sameValue ? 'status success' : 'status error'}">
+          ${sameValue
+            ? 'Ambas implementaciones devolvieron el mismo valor optimo.'
+            : 'Los resultados son distintos. Revisa el CSV o los datos de entrada.'}
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+function runBenchmarkFromCsv(csvText, capacity) {
+  const rows = parseBenchmarkCsv(csvText);
+  const weights = rows.map(function (r) { return r.price; });
+  const values = rows.map(function (r) { return r.benefit; });
+
+  if (weights.length !== values.length || capacity < 0) {
+    throw new Error('Datos invalidos para knapsack.');
+  }
+
+  const jsStart = performance.now();
+  const jsValue = window.knapsackRecursive01(weights, values, capacity, weights.length);
+  const jsTimeMs = performance.now() - jsStart;
+
+  const wasmStart = performance.now();
+  const wasmValue = knapsack(weights.join(','), values.join(','), capacity);
+  const wasmTimeMs = performance.now() - wasmStart;
+
+  if (jsValue < 0 || wasmValue < 0) {
+    throw new Error('Error de validacion al ejecutar knapsack (JS o WASM).');
+  }
+
+  return {
+    jsValue: jsValue,
+    wasmValue: wasmValue,
+    jsTimeMs: jsTimeMs,
+    wasmTimeMs: wasmTimeMs
+  };
+}
+
 function wasmBestValue(items, capacity, cache) {
   if (items.length === 0 || capacity <= 0) {
     return 0;
@@ -319,12 +424,19 @@ var Module = {
     const btn = document.getElementById('btn');
     const status = document.getElementById('status');
     const resultNode = document.getElementById('result');
+    const benchmarkFile = document.getElementById('benchmark-file');
+    const benchmarkCapacity = document.getElementById('benchmark-capacity');
+    const benchmarkBtn = document.getElementById('btn-benchmark');
+    const benchmarkStatus = document.getElementById('benchmark-status');
+    const benchmarkResult = document.getElementById('benchmark-result');
 
     btnStock.addEventListener('click', updateStockStatus);
     btnBenefit.addEventListener('click', updateBenefitStatus);
     renderProducts();
     btn.disabled = false;
     status.textContent = 'WASM listo.';
+    benchmarkBtn.disabled = false;
+    benchmarkStatus.textContent = 'WASM listo. Carga un CSV para ejecutar benchmark.';
 
     btn.addEventListener('click', function () {
       const budget = parseInt(document.getElementById('budget').value, 10);
@@ -346,6 +458,51 @@ var Module = {
 
       status.textContent = 'Calculo completado con WASM.';
       renderResult(plan, budget);
+    });
+
+    benchmarkBtn.addEventListener('click', function () {
+      const file = benchmarkFile.files && benchmarkFile.files[0];
+      const capacity = parseInt(benchmarkCapacity.value, 10);
+
+      if (!file) {
+        benchmarkStatus.textContent = 'Error: selecciona un archivo CSV.';
+        benchmarkStatus.className = 'status error';
+        benchmarkResult.innerHTML = '';
+        return;
+      }
+
+      if (Number.isNaN(capacity) || capacity < 0) {
+        benchmarkStatus.textContent = 'Error: capacidad invalida.';
+        benchmarkStatus.className = 'status error';
+        benchmarkResult.innerHTML = '';
+        return;
+      }
+
+      benchmarkStatus.textContent = 'Leyendo CSV y ejecutando prueba';
+      benchmarkStatus.className = 'status loading';
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        try {
+          const csvText = String(reader.result || '');
+          const metrics = runBenchmarkFromCsv(csvText, capacity);
+          renderBenchmarkResult(metrics);
+          benchmarkStatus.textContent = 'Benchmark completado.';
+          benchmarkStatus.className = 'status success';
+        } catch (error) {
+          benchmarkStatus.textContent = 'Error: ' + error.message;
+          benchmarkStatus.className = 'status error';
+          benchmarkResult.innerHTML = '';
+        }
+      };
+
+      reader.onerror = function () {
+        benchmarkStatus.textContent = 'Error: no se pudo leer el archivo CSV.';
+        benchmarkStatus.className = 'status error';
+        benchmarkResult.innerHTML = '';
+      };
+
+      reader.readAsText(file);
     });
   }
 };
