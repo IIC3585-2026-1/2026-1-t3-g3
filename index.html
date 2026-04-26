@@ -7,33 +7,150 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main>
-    <h1>Supermercado con WebAssembly</h1>
-    <p>Marca productos obligatorios y WASM calcula el mejor beneficio con el presupuesto restante.</p>
+  <main class="container">
 
-    <label for="budget">Presupuesto maximo (CLP)</label>
-    <input id="budget" type="number" min="0" step="100" value="15000">
-    <h2>Stock en mercado</h2>
-    <div id="stock-editor" class="stock-editor">
-      <label>Leche: <input type="number" min="0" value="1" data-stock-id="1"></label>
-      <label>Pan: <input type="number" min="0" value="1" data-stock-id="2"></label>
-      <label>Huevos: <input type="number" min="0" value="1" data-stock-id="3"></label>
-      <label>Arroz: <input type="number" min="0" value="1" data-stock-id="4"></label>
-      <label>Pollo: <input type="number" min="0" value="1" data-stock-id="5"></label>
-      <label>Fruta: <input type="number" min="0" value="1" data-stock-id="6"></label>
-      <label>Fideos: <input type="number" min="0" value="1" data-stock-id="7"></label>
-      <label>Atun: <input type="number" min="0" value="1" data-stock-id="8"></label>
-    </div>
-    <button id="btn-stock" type="button">Actualizar stock</button>
-    <div id="stock-status"></div>
+    <header class="header">
+      <h1>Supermercado con WebAssembly</h1>
+      <p class="subtitle">
+        Marca productos obligatorios y WASM calcula el mejor beneficio con el presupuesto restante.
+      </p>
+    </header>
 
-    <h2>Productos de la tienda</h2>
-    <div id="products" class="products"></div>
+    <section class="layout">
 
-    <button id="btn" disabled>Calcular con WASM</button>
+      <aside class="panel left-panel">
 
-    <div id="status">Cargando modulo WASM...</div>
-    <div id="result"></div>
+        <div class="card">
+          <h2>Presupuesto</h2>
+          <div class="form-group">
+            <label for="budget">Presupuesto máximo (CLP)</label>
+            <input id="budget" type="number" min="0" step="100" value="15000">
+          </div>
+        </div>
+
+        <div class="card">
+          <details class="collapsible-section">
+            <summary>
+              <h2>Stock en mercado</h2>
+            </summary>
+
+            <div id="stock-editor" class="stock-grid">
+              <div class="stock-item">
+                <label>Leche</label>
+                <input type="number" min="0" value="1" data-stock-id="1">
+              </div>
+              <div class="stock-item">
+                <label>Pan</label>
+                <input type="number" min="0" value="1" data-stock-id="2">
+              </div>
+              <div class="stock-item">
+                <label>Huevos</label>
+                <input type="number" min="0" value="1" data-stock-id="3">
+              </div>
+              <div class="stock-item">
+                <label>Arroz</label>
+                <input type="number" min="0" value="1" data-stock-id="4">
+              </div>
+              <div class="stock-item">
+                <label>Pollo</label>
+                <input type="number" min="0" value="1" data-stock-id="5">
+              </div>
+              <div class="stock-item">
+                <label>Fruta</label>
+                <input type="number" min="0" value="1" data-stock-id="6">
+              </div>
+              <div class="stock-item">
+                <label>Fideos</label>
+                <input type="number" min="0" value="1" data-stock-id="7">
+              </div>
+              <div class="stock-item">
+                <label>Atún</label>
+                <input type="number" min="0" value="1" data-stock-id="8">
+              </div>
+            </div>
+
+            <button id="btn-stock" type="button" class="btn secondary">
+              Actualizar stock
+            </button>
+
+            <div id="stock-status" class="status"></div>
+          </details>
+        </div>
+
+        <div class="card">
+          <details class="collapsible-section">
+            <summary>
+              <h2>Beneficios de productos</h2>
+            </summary>
+
+            <div id="benefit-editor" class="stock-grid">
+              <div class="stock-item">
+                <label>Leche</label>
+                <input type="number" min="0" value="6" data-benefit-id="1">
+              </div>
+              <div class="stock-item">
+                <label>Pan</label>
+                <input type="number" min="0" value="4" data-benefit-id="2">
+              </div>
+              <div class="stock-item">
+                <label>Huevos</label>
+                <input type="number" min="0" value="7" data-benefit-id="3">
+              </div>
+              <div class="stock-item">
+                <label>Arroz</label>
+                <input type="number" min="0" value="5" data-benefit-id="4">
+              </div>
+              <div class="stock-item">
+                <label>Pollo</label>
+                <input type="number" min="0" value="10" data-benefit-id="5">
+              </div>
+              <div class="stock-item">
+                <label>Fruta</label>
+                <input type="number" min="0" value="5" data-benefit-id="6">
+              </div>
+              <div class="stock-item">
+                <label>Fideos</label>
+                <input type="number" min="0" value="5" data-benefit-id="7">
+              </div>
+              <div class="stock-item">
+                <label>Atún</label>
+                <input type="number" min="0" value="6" data-benefit-id="8">
+              </div>
+            </div>
+
+            <button id="btn-benefit" type="button" class="btn secondary">
+              Actualizar beneficios
+            </button>
+
+            <div id="benefit-status" class="status"></div>
+          </details>
+        </div>
+
+      </aside>
+
+      <section class="panel right-panel">
+
+        <div class="card">
+          <h2>Productos disponibles</h2>
+          <div id="products" class="products-grid"></div>
+        </div>
+
+        <div class="card">
+          <button id="btn" class="btn primary" disabled>
+            Calcular con WASM
+          </button>
+
+          <div id="status" class="status loading">
+            Cargando módulo WASM...
+          </div>
+
+          <div id="result" class="result"></div>
+        </div>
+
+      </section>
+
+    </section>
+
   </main>
 
   <script src="app.js"></script>
